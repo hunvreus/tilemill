@@ -241,7 +241,7 @@ command.prototype.mbtiles = function (project, callback) {
         xml: project.xml,
         mml: project.mml,
         pathname: path.join(this.opts.files, 'project', project.id, project.id + '.xml'),
-        query: { bufferSize: this.opts.bufferSize }
+        query: { bufferSize: this.opts.bufferSize, metatile:8 }
     };
     var source;
     var sink;
