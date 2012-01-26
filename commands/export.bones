@@ -59,6 +59,12 @@ command.options['skipblank'] = {
     'default': false
 };
 
+command.options['resume'] = {
+    'title': 'resume=1|0',
+    'description': 'Resume render for target export.',
+    'default': false
+};
+
 command.prototype.initialize = function(plugin, callback) {
     _(this).bindAll('error', 'put', 'complete');
 
@@ -69,6 +75,7 @@ command.prototype.initialize = function(plugin, callback) {
     opts.project = plugin.argv._[1];
     opts.filepath = path.resolve(plugin.argv._[2]);
     opts.skipblank = Boolean(opts.skipblank);
+    opts.resume = Boolean(opts.resume);
     callback = callback || function() {};
     this.opts = opts;
 
@@ -103,7 +110,7 @@ command.prototype.initialize = function(plugin, callback) {
         opts.height = parseInt(opts.height, 10);
 
     // Rename the output filepath using a random hash if file already exists.
-    if (path.existsSync(opts.filepath) && !_(['upload','sync']).include(opts.format)) {
+    if (path.existsSync(opts.filepath) && !opts.resume && !_(['upload','sync']).include(opts.format)) {
         var hash = crypto.createHash('md5')
             .update(+new Date + '')
             .digest('hex')
@@ -274,7 +281,8 @@ command.prototype.mbtiles = function (project, callback) {
             concurrency: 100,
             tiles: true,
             grids: !!project.mml.interactivity,
-            skipBlank: cmd.opts.skipblank
+            skipBlank: cmd.opts.skipblank,
+            resume: cmd.opts.resume
         });
 
         var done = false;
