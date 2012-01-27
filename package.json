@@ -29,7 +29,7 @@
         "sax": "0.1.x",
         "request": "1.9.x",
         "step": "0.0.x",
-        "tilelive": "https://github.com/mapbox/tilelive.js/tarball/skipblank2",
+        "tilelive": "https://github.com/mapbox/tilelive.js/tarball/skipblank",
         "mapnik": "~0.5.16",
         "millstone": "~0.3.0",
         "sphericalmercator": "~1.0.1",
