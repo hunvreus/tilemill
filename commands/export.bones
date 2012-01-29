@@ -94,7 +94,7 @@ command.prototype.initialize = function(plugin, callback) {
 
     // Format.
     if (!opts.format) opts.format = path.extname(opts.filepath).split('.').pop();
-    if (!_(['pdf', 'svg', 'png', 'mbtiles', 'upload', 'sync']).include(opts.format))
+    if (!_(['pdf', 'svg', 'png', 'bigtiles', 'mbtiles', 'upload', 'sync']).include(opts.format))
         return this.error(new Error('Invalid format: ' + opts.format));
 
     // Convert string params into numbers.
@@ -236,10 +236,11 @@ command.prototype.pdf = function(project, callback) {
     }
 };
 
+command.prototype.bigtiles =
 command.prototype.mbtiles = function (project, callback) {
     var cmd = this;
     var tilelive = require('tilelive');
-    require('mbtiles').registerProtocols(tilelive);
+    require(this.opts.format).registerProtocols(tilelive);
     require('tilelive-mapnik').registerProtocols(tilelive);
 
     var uri = {
@@ -258,7 +259,7 @@ command.prototype.mbtiles = function (project, callback) {
     }, function(err, s) {
         if (err) throw err;
         source = s;
-        var uri = {protocol:'mbtiles:',pathname:cmd.opts.filepath};
+        var uri = {protocol:cmd.opts.format+':',pathname:cmd.opts.filepath};
         tilelive.load(uri, this);
     }, function(err, s) {
         if (err) throw err;
