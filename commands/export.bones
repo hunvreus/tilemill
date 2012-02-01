@@ -65,6 +65,12 @@ command.options['resume'] = {
     'default': false
 };
 
+command.options['metatile'] = {
+    'title': 'metatile=[num]',
+    'description': 'Metatile size.',
+    'default': 2
+};
+
 command.prototype.initialize = function(plugin, callback) {
     _(this).bindAll('error', 'put', 'complete');
 
@@ -108,6 +114,8 @@ command.prototype.initialize = function(plugin, callback) {
         opts.width = parseInt(opts.width, 10);
     if (!_(opts.height).isUndefined())
         opts.height = parseInt(opts.height, 10);
+    if (!_(opts.metatile).isUndefined())
+        opts.metatile = parseInt(opts.metatile, 10);
 
     // Rename the output filepath using a random hash if file already exists.
     if (path.existsSync(opts.filepath) && !opts.resume && !_(['upload','sync']).include(opts.format)) {
@@ -249,7 +257,7 @@ command.prototype.mbtiles = function (project, callback) {
         xml: project.xml,
         mml: project.mml,
         pathname: path.join(this.opts.files, 'project', project.id, project.id + '.xml'),
-        query: { bufferSize: this.opts.bufferSize, metatile:8 }
+        query: { bufferSize: this.opts.bufferSize, metatile:this.opts.metatile }
     };
     var source;
     var sink;
@@ -301,6 +309,22 @@ command.prototype.mbtiles = function (project, callback) {
             console.log(err);
         });
         copy.on('finished', function() {
+            if (source._stats) {
+                console.log('source => sink');
+                console.log('--------------');
+                console.log('copied        %s', copy.total);
+                console.log('blank         %s', copy.blank);
+                console.log('skipped       %s', copy.skipped);
+                console.log('');
+                console.log('source');
+                console.log('------');
+                console.log('map.render    %s', source._stats.render);
+                console.log('getImage      %s', source._stats.total);
+                console.log('encoded       %s', source._stats.encoded);
+                console.log('solid         %s', source._stats.solid);
+                console.log('solid+painted %s', source._stats.solidPainted);
+            }
+
             clearInterval(timeout);
             callback();
         });
