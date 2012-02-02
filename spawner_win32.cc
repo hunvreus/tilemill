@@ -37,7 +37,7 @@ void ErrorExit(LPTSTR lpszFunction, DWORD dw)
         LocalSize(lpDisplayBuf) / sizeof(TCHAR),
         TEXT("%s failed with error %d: %s"), 
         lpszFunction, dw, lpMsgBuf); 
-    MessageBox(NULL, (LPCTSTR)lpDisplayBuf, TEXT("Error"), MB_OK); 
+    MessageBox(NULL, (LPCTSTR)lpDisplayBuf, TEXT("TileMill Error"), MB_OK); 
 
     LocalFree(lpMsgBuf);
     LocalFree(lpDisplayBuf);
@@ -51,12 +51,11 @@ void ErrorExit(LPTSTR lpszFunction)
 
 bool writeToLog(const char* chBuf)
 {
-  DWORD dwRead = strlen(chBuf); 
-  DWORD dwWritten(0); 
-   //CHAR chBuf[BUFSIZE]; 
-   BOOL bSuccess = FALSE;
+    DWORD dwRead = strlen(chBuf); 
+    DWORD dwWritten(0); 
+    BOOL bSuccess = FALSE;
 
-   return WriteFile(g_hInputFile, chBuf, 
+    return WriteFile(g_hInputFile, chBuf, 
                            dwRead, &dwWritten, NULL);
 
 }
@@ -83,17 +82,20 @@ void ReadFromPipe(void)
    for (;;) 
    { 
       bSuccess = ReadFile( g_hChildStd_OUT_Rd, chBuf, BUFSIZE, &dwRead, NULL);
-      //OutputDebugString(chBuf);
 	  if( ! bSuccess ) break;
-	  /*if( ! bSuccess || dwRead == 0 ) break;
-	  */
-
-      // TODO - check for error and display!
+      std::string debug_line(chBuf);
+	  std::string substring = debug_line.substr(0,static_cast<size_t>(dwRead));
+	  substring += "\nPlease report this to https://github.com/mapbox/tilemill/issues\n";
+	  if (substring.find("Error:") !=std::string::npos)
+	  {
+		  MessageBox(NULL, static_cast<LPCSTR>(substring.c_str()), TEXT("TileMill Error"), MB_OK);
+		  ExitProcess(1);
+	  }
 	  bSuccess = WriteFile(g_hInputFile, chBuf, 
                            dwRead, &dwWritten, NULL);
       if (! bSuccess ) break;
       	  
-   } 
+   }
 }
 
 void CreateChildProcess()
@@ -253,7 +255,7 @@ int APIENTRY WinMain(HINSTANCE hInstance,
       ErrorExit("TileMill.exe setting env: ",GetLastError());
   if (!SetEnvironmentVariableA("GDAL_DATA","data\\gdal\\data"))
       ErrorExit("TileMill.exe setting env: ",GetLastError());
-  if (!SetEnvironmentVariableA("PATH","noe_modules\\mapnik\\lib\\mapnik\\lib;node_modules\\zipfile\\lib;%PATH%"))
+  if (!SetEnvironmentVariableA("PATH","node_modules\\mapnik\\lib\\mapnik\\lib;node_modules\\zipfile\\lib;%PATH%"))
       ErrorExit("TileMill.exe setting env: ",GetLastError());
 
   // Create the child process. 
