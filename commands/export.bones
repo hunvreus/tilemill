@@ -312,6 +312,7 @@ command.prototype.mbtiles = function (project, callback) {
             if (source._stats) {
                 console.log('source => sink');
                 console.log('--------------');
+                console.log('time          %s', Date.now() - copy.started);
                 console.log('copied        %s', copy.total);
                 console.log('blank         %s', copy.blank);
                 console.log('skipped       %s', copy.skipped);
