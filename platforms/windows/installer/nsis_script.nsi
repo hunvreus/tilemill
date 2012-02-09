@@ -61,7 +61,7 @@ Section "MainSection" SEC01
       /x *.git* /x Makefil* /x test /x *.vcx* /x *.ipch \
 	  /x ipch /x AppData /x deps /x include /x expresso \
 	  /x osx /x ubuntu /x virtualbox /x *.idx /x *.pack \
-	  /x *.sln /x *.sdf /x *.lib \
+	  /x *.sln /x *.sdf /x *.lib /x Default \
 	  ..\..\..\..\tilemill\*.*
   ExecWait "$INSTDIR\platforms\windows\vcredist_x86.exe /q /norestart"
 

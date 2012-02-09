@@ -4,5 +4,8 @@
 
 rd /q /s Debug
 rd /q /s Release
-msbuild spawner_win32.vcxproj
-copy Debug\spawner_win32.exe TileMill.exe
+del build.sln
+python gyp/gyp build.gyp --depth=. -f msvs -G msvs_version=2010
+msbuild build.sln
+rem msbuild spawner_win32.vcxproj
+copy Default\TileMill.exe TileMill.exe
