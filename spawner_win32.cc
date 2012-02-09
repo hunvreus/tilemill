@@ -57,7 +57,6 @@ bool writeToLog(const char* chBuf)
 
     return WriteFile(g_hInputFile, chBuf, 
                            dwRead, &dwWritten, NULL);
-
 }
 
 void ReadFromPipe(void) 
@@ -71,10 +70,10 @@ void ReadFromPipe(void)
    BOOL bSuccess = FALSE;
    HANDLE hParentStdOut = GetStdHandle(STD_OUTPUT_HANDLE);
 
-// Close the write end of the pipe before reading from the 
-// read end of the pipe, to control child process execution.
-// The pipe is assumed to have enough buffer space to hold the
-// data the child process has already written to it.
+   // Close the write end of the pipe before reading from the 
+   // read end of the pipe, to control child process execution.
+   // The pipe is assumed to have enough buffer space to hold the
+   // data the child process has already written to it.
  
    if (!CloseHandle(g_hChildStd_OUT_Wr)) 
       ErrorExit(TEXT("StdOutWr CloseHandle")); 
@@ -88,7 +87,14 @@ void ReadFromPipe(void)
 	  substring += "\nPlease report this to https://github.com/mapbox/tilemill/issues\n";
 	  if (substring.find("Error:") !=std::string::npos)
 	  {
-		  MessageBox(NULL, static_cast<LPCSTR>(substring.c_str()), TEXT("TileMill Error"), MB_OK);
+		  if (substring.find("EADDRINUSE") !=std::string::npos)
+		  {
+		      MessageBox(NULL, static_cast<LPCSTR>("TileMill port already in use. Please quit the other application using port 20009 and then restart TileMill"), TEXT("TileMill Error"), MB_OK);
+		  }
+		  else
+		  {
+		      MessageBox(NULL, static_cast<LPCSTR>(substring.c_str()), TEXT("TileMill Error"), MB_OK);
+		  }
 		  ExitProcess(1);
 	  }
 	  bSuccess = WriteFile(g_hInputFile, chBuf, 
@@ -266,23 +272,35 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 
    TCHAR strPath[ MAX_PATH ];
 
-// Get the special folder path.
-SHGetSpecialFolderPath(
-    0,       // Hwnd
-    strPath, // String buffer.
-    CSIDL_PROFILE, // CSLID of folder
-    FALSE ); // Create if doesn't exists?
+   // Get the special folder path.
+    SHGetSpecialFolderPath(
+      0,       // Hwnd
+      strPath, // String buffer.
+      CSIDL_PROFILE, // CSLID of folder
+      FALSE ); // Create if doesn't exists?
 	
    std::string logpath(strPath);
    logpath += "\\tilemill.log";
    g_hInputFile = CreateFile(
        logpath.c_str(), 
-       GENERIC_WRITE, 
+       FILE_APPEND_DATA, 
        FILE_SHARE_READ, 
        NULL, 
-       CREATE_ALWAYS, 
+       OPEN_EXISTING, 
        FILE_ATTRIBUTE_NORMAL, 
-       NULL); 
+       NULL);
+	// if it already existed then the error code will be ERROR_FILE_NOT_FOUND
+	if (GetLastError() == ERROR_FILE_NOT_FOUND)
+	{
+       g_hInputFile = CreateFile(
+         logpath.c_str(), 
+         FILE_APPEND_DATA, 
+         FILE_SHARE_READ, 
+         NULL, 
+         CREATE_ALWAYS, 
+         FILE_ATTRIBUTE_NORMAL, 
+         NULL);	
+	}
 
     if ( g_hInputFile == INVALID_HANDLE_VALUE ) 
       ErrorExit(TEXT("CreateFile")); 
