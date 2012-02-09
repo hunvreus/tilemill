@@ -49,7 +49,7 @@ var ICONS_GROUP
 ; MUI end ------
 
 Name "${PRODUCT_NAME} ${PRODUCT_VERSION}"
-OutFile "TileMill-${PRODUCT_VERSION}-Installer.exe"
+OutFile "TileMill-${PRODUCT_VERSION}-Setup.exe"
 InstallDir "$PROGRAMFILES\TileMill"
 
 Section "MainSection" SEC01
@@ -82,7 +82,7 @@ Section -AdditionalIcons
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
   ;WriteIniStr "$INSTDIR\${PRODUCT_NAME}.url" "InternetShortcut" "URL" "${PRODUCT_WEB_SITE}"
   CreateDirectory "$SMPROGRAMS\$ICONS_GROUP"
-  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\Start TileMill.lnk" "$INSTDIR\platforms\windows\run-tilemill.bat" "" \
+  CreateShortCut "$SMPROGRAMS\$ICONS_GROUP\Start TileMill.lnk" "$INSTDIR\TileMill.exe" "" \
       "$INSTDIR\platforms\windows\tilemill.ico" "" \
 	  SW_SHOWNORMAL \
       ALT|CONTROL|t "TileMill"
