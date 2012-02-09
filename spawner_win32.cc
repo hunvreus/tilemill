@@ -267,7 +267,6 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   // Create the child process. 
   CreateChildProcess();
 
-  
    // String buffer for holding the path.
 
    TCHAR strPath[ MAX_PATH ];
@@ -282,24 +281,25 @@ int APIENTRY WinMain(HINSTANCE hInstance,
    std::string logpath(strPath);
    logpath += "\\tilemill.log";
    g_hInputFile = CreateFile(
-       logpath.c_str(), 
-       FILE_APPEND_DATA, 
-       FILE_SHARE_READ, 
-       NULL, 
-       OPEN_EXISTING, 
-       FILE_ATTRIBUTE_NORMAL, 
+       logpath.c_str(),
+       FILE_APPEND_DATA,
+       FILE_SHARE_READ,
+       NULL,
+       OPEN_EXISTING,
+       FILE_ATTRIBUTE_NORMAL,
        NULL);
+
 	// if it already existed then the error code will be ERROR_FILE_NOT_FOUND
 	if (GetLastError() == ERROR_FILE_NOT_FOUND)
 	{
        g_hInputFile = CreateFile(
-         logpath.c_str(), 
-         FILE_APPEND_DATA, 
-         FILE_SHARE_READ, 
-         NULL, 
-         CREATE_ALWAYS, 
-         FILE_ATTRIBUTE_NORMAL, 
-         NULL);	
+         logpath.c_str(),
+         FILE_APPEND_DATA,
+         FILE_SHARE_READ,
+         NULL,
+         CREATE_ALWAYS,
+         FILE_ATTRIBUTE_NORMAL,
+         NULL);
 	}
 
     if ( g_hInputFile == INVALID_HANDLE_VALUE ) 
@@ -307,13 +307,6 @@ int APIENTRY WinMain(HINSTANCE hInstance,
   
    // Read from pipe that is the standard output for child process. 
    writeToLog("Starting TileMill...\n");
-  
    ReadFromPipe(); 
-
-  // The remaining open handles are cleaned up when this process terminates. 
-  // To avoid resource leaks in a larger application, close handles explicitly. 
-
    return 0;
-
- 
 }
