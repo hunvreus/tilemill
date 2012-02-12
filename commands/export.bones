@@ -5,6 +5,7 @@ var request = require('request');
 var crypto = require('crypto');
 var Step = require('step');
 var http = require('http');
+var chrono = require('chrono');
 
 command = Bones.Command.extend();
 
@@ -205,12 +206,12 @@ command.prototype.remaining = function(progress, started) {
 
 command.prototype.put = function(data, callback) {
     callback = callback || function() {};
-    data.status == 'error' ?
-        console.error(JSON.stringify(data)) :
-        console.log(JSON.stringify(data));
 
     // Allow commands to filter.
     if (this.putFilter) data = this.putFilter(data);
+
+    // Output data to stderr/stdout.
+    this.toConsole(data);
 
     if (!this.opts.url) return callback();
     request.put({
@@ -221,6 +222,21 @@ command.prototype.put = function(data, callback) {
         },
         json: _(data).extend({'bones.token': 'token'})
     }, callback);
+};
+
+command.prototype.toConsole = function(data) {
+    if (data.status == 'error') {
+        console.error('%s', data.error);
+    } else if (data.updated) {
+        console.log('[%s] %s% - %s - %s remaining',
+            (new Date(data.updated)).format('Y M D g:ia'),
+            ((data.progress || 0) * 100).toFixed(4),
+            (data.rate || 0).toFixed(2) + ' tiles/sec',
+            ((data.remaining || 0) > 36e5)
+                ? ((data.remaining || 0) / 36e5).toFixed(1) + 'h'
+                : ((data.remaining || 0) / 6e4).toFixed(1) + 'm'
+        );
+    }
 };
 
 command.prototype.png =
@@ -294,7 +310,7 @@ command.prototype.mbtiles = function (project, callback) {
             resume: cmd.opts.resume
         });
 
-        var done = false;
+        var copied = 0;
         var timeout = setInterval(function progress() {
             var progress = (copy.copied + copy.failed) / copy.total;
             cmd.put({
@@ -302,13 +318,17 @@ command.prototype.mbtiles = function (project, callback) {
                 progress: progress,
                 remaining: cmd.remaining(progress, copy.started),
                 updated: +new Date(),
+                rate: (copy.copied - copied) / 5
             });
+            copied = copy.copied;
         }, 5000);
 
         copy.on('warning', function(err) {
             console.log(err);
         });
         copy.on('finished', function() {
+            clearInterval(timeout);
+
             if (source._stats) {
                 console.log('source => sink');
                 console.log('--------------');
@@ -326,7 +346,6 @@ command.prototype.mbtiles = function (project, callback) {
                 console.log('solid+painted %s', source._stats.solidPainted);
             }
 
-            clearInterval(timeout);
             callback();
         });
         copy.on('error', function(err) {
