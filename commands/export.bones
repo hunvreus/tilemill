@@ -228,6 +228,7 @@ command.prototype.toConsole = function(data) {
     if (data.status == 'error') {
         console.error('%s', data.error);
     } else if (data.updated) {
+        if (data.remaining === Infinity) return;
         console.log('[%s] %s% - %s - %s remaining',
             (new Date(data.updated)).format('Y M D g:ia'),
             ((data.progress || 0) * 100).toFixed(4),
