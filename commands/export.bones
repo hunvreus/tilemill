@@ -304,7 +304,7 @@ command.prototype.mbtiles = function (project, callback) {
             bbox: project.mml.bounds,
             minZoom: project.mml.minzoom,
             maxZoom: project.mml.maxzoom,
-            concurrency: 10000,
+            concurrency: 1000,
             tiles: true,
             grids: !!project.mml.interactivity,
             skipBlank: cmd.opts.skipblank,
