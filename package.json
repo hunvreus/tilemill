@@ -36,7 +36,7 @@
         "sphericalmercator": "~1.0.1",
         "tilelive-mapnik": "https://github.com/mapbox/tilelive-mapnik/tarball/skipblank",
         "underscore": "1.1.x",
-        "carto": "~0.4.3",
+        "carto": "https://github.com/mapbox/carto/tarball/8dc0f92a0d162667b04cda98cbd8e8493f995f57",
         "wax": "5.0.0-alpha2",
         "node-markdown": "0.1.0",
         "sqlite3": "~2.0.16",
