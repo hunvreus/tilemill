@@ -144,6 +144,12 @@ command.prototype.initialize = function(plugin, callback) {
         Bones.utils.fetch({model:model}, this);
     }, function(err) {
         if (err) throw err;
+        // Set the postgres connection pool size to # of cpus based on
+        // assumption of pool size in tilelive-mapnik.
+        model.get('Layer').each(function(l) {
+            if (l.attributes.Datasource && l.attributes.Datasource.dbname)
+                l.attributes.Datasource.max_size = require('os').cpus().length;
+        });
         model.localize(model.toJSON(), this);
     }, function(err) {
         if (err) return cmd.error(err, function() {
@@ -306,7 +312,7 @@ command.prototype.mbtiles = function (project, callback) {
             bbox: project.mml.bounds,
             minZoom: project.mml.minzoom,
             maxZoom: project.mml.maxzoom,
-            concurrency: 1000,
+            concurrency: Math.pow(cmd.opts.metatile,2) * require('os').cpus().length * 2,
             tiles: true,
             grids: !!project.mml.interactivity,
             skipBlank: cmd.opts.skipblank,
