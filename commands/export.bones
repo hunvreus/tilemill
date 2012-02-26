@@ -72,6 +72,12 @@ command.options['metatile'] = {
     'default': 2
 };
 
+command.options['concurrency'] = {
+    'title': 'concurrency=[num]',
+    'description': 'Number of exports that can be run concurrently.',
+    'default': 4
+};
+
 command.prototype.initialize = function(plugin, callback) {
     _(this).bindAll('error', 'put', 'complete');
 
@@ -312,7 +318,11 @@ command.prototype.mbtiles = function (project, callback) {
             bbox: project.mml.bounds,
             minZoom: project.mml.minzoom,
             maxZoom: project.mml.maxzoom,
-            concurrency: Math.pow(cmd.opts.metatile,2) * require('os').cpus().length,
+            concurrency: Math.floor(
+                Math.pow(cmd.opts.metatile,2) * // # of tiles in each metatile
+                require('os').cpus().length *   // expect one metatile to occupy each core
+                4/cmd.opts.concurrency          // overcommit x4 throttle by export concurrency
+            ),
             tiles: true,
             grids: !!project.mml.interactivity,
             skipBlank: cmd.opts.skipblank,
