@@ -25,21 +25,21 @@
         "bones": "https://github.com/developmentseed/bones/tarball/1.3",
         "chrono": "~1.0.1",
         "JSV": "3.5.x",
-        "mbtiles": "https://github.com/mapbox/node-mbtiles/tarball/skipblank",
-        "bigtiles": "https://github.com/mapbox/node-bigtiles/tarball/master",
+        "mbtiles": "https://github.com/mapbox/node-mbtiles/tarball/skipblank-node-v6",
+        "bigtiles": "https://github.com/mapbox/node-bigtiles/tarball/node-v6",
         "sax": "0.1.x",
         "request": "1.9.x",
         "step": "0.0.x",
         "tilelive": "https://github.com/mapbox/tilelive.js/tarball/schemes",
-        "mapnik": "https://github.com/mapnik/node-mapnik/tarball/eeacb0d813c49d01820623bbc84a074883c41a4f",
-        "millstone": "~0.3.0",
+        "mapnik": "https://github.com/mapnik/node-mapnik/tarball/master",
+        "millstone": "https://github.com/mapbox/millstone/tarball/node-v6",
         "sphericalmercator": "~1.0.1",
-        "tilelive-mapnik": "https://github.com/mapbox/tilelive-mapnik/tarball/skipblank",
+        "tilelive-mapnik": "https://github.com/mapbox/tilelive-mapnik/tarball/skipblank-node-v6",
         "underscore": "1.1.x",
-        "carto": "https://github.com/mapbox/carto/tarball/8dc0f92a0d162667b04cda98cbd8e8493f995f57",
+        "carto": "https://github.com/mapbox/carto/tarball/node-v6",
         "wax": "5.0.0-alpha2",
         "node-markdown": "0.1.0",
-        "sqlite3": "~2.0.16",
+        "sqlite3": "~2.1.1",
         "passport": "0.1.x",
         "passport-oauth": "0.1.x",
         "modestmaps": "1.0.0-alpha",
@@ -60,5 +60,5 @@
     "bin": {
         "tilemill": "./index.js"
     },
-    "engines": { "node": "0.4.x" }
+    "engines": { "node": "0.6.x" }
 }
