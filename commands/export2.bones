@@ -158,7 +158,10 @@ command.prototype.initialize = function(plugin, callback) {
         process.stderr.write('Loading project...');
         Bones.utils.fetch({model:model}, this);
     }, function(err) {
-        if (err) throw err;
+        if (err) return cmd.error(err, function() {
+            process.stderr.write(err.stack + '\n');
+            process.exit(1);
+        });
         process.stderr.write(' done.\n');
         // Set the postgres connection pool size to # of cpus based on
         // assumption of pool size in tilelive-mapnik.
