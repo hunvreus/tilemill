@@ -32,7 +32,6 @@ Step(function() {
       -H "cookie: bones.token=asdf" \
       -X PUT -d '{"bufferSize":1024,"bones.token":"asdf"}'
     */
-    console.log(server);
     assert.response(server, {
         url: '/api/Config/config',
         method: 'PUT',
