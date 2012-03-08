@@ -26,6 +26,13 @@ Step(function() {
     this();
 // PUT config
 }, function() {
+    /*
+    curl http://127.0.0.1:20009/api/Config/config -i \
+      -H "content-type: application/json" \
+      -H "cookie: bones.token=asdf" \
+      -X PUT -d '{"bufferSize":1024,"bones.token":"asdf"}'
+    */
+    console.log(server);
     assert.response(server, {
         url: '/api/Config/config',
         method: 'PUT',

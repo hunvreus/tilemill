@@ -30,8 +30,8 @@ require('./support/start')(function(command) {
                 assert.deepEqual({
                     mbtiles: true,
                     png: true,
-                    pdf: true,
-                    svg: true
+                    pdf: false,
+                    svg: false
                 }, abilities.exports);
             }
         );
