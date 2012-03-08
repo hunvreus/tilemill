@@ -247,8 +247,7 @@ view.prototype.save = function() {
             filename: attr.filename,
             bbox: attr.bounds,
             minzoom: attr.minzoom,
-            maxzoom: attr.maxzoom,
-            skipblank: attr.skipblank
+            maxzoom: attr.maxzoom
         }, {error:error})) return false;
         break;
     case 'png':

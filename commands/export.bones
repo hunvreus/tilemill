@@ -3,6 +3,7 @@ var url = require('url');
 var path = require('path');
 var request = require('request');
 var crypto = require('crypto');
+var util = require('util');
 var Step = require('step');
 var http = require('http');
 var chrono = require('chrono');
@@ -54,15 +55,20 @@ command.options['log'] = {
     'description': 'Write crash logs to destination directory.'
 };
 
-command.options['skipblank'] = {
-    'title': 'skipblank=1|0',
-    'description': 'Skip blank tiles when exporting to MBTiles.',
-    'default': false
+command.options['quiet'] = {
+    'title': 'quiet',
+    'description': 'Suppresses progress output.'
 };
 
-command.options['resume'] = {
-    'title': 'resume=1|0',
-    'description': 'Resume render for target export.',
+command.options['scheme'] = {
+    'title': 'scheme=[pyramid|file]',
+    'description': 'Enumeration scheme that defines the order in which tiles will be rendered.',
+    'default': 'pyramid'
+};
+
+command.options['job'] = {
+    'title': 'job=[file]',
+    'description': 'Store state in this file. If it exists, that job will be resumed.',
     'default': false
 };
 
@@ -87,8 +93,6 @@ command.prototype.initialize = function(plugin, callback) {
     opts.files = path.resolve(opts.files);
     opts.project = plugin.argv._[1];
     opts.filepath = path.resolve(plugin.argv._[2]);
-    opts.skipblank = Boolean(opts.skipblank);
-    opts.resume = Boolean(opts.resume);
     callback = callback || function() {};
     this.opts = opts;
 
@@ -96,7 +100,7 @@ command.prototype.initialize = function(plugin, callback) {
     if (opts.log) {
         process.on('uncaughtException', function(err) {
             fs.writeFileSync(opts.filepath + '.crashlog', err.stack || err.toString());
-            process.exit(1);
+            // process.exit(1);
         });
     }
 
@@ -125,7 +129,7 @@ command.prototype.initialize = function(plugin, callback) {
         opts.metatile = parseInt(opts.metatile, 10);
 
     // Rename the output filepath using a random hash if file already exists.
-    if (path.existsSync(opts.filepath) && !opts.resume && !_(['upload','sync']).include(opts.format)) {
+    if (path.existsSync(opts.filepath) && !_(['upload','sync']).include(opts.format)) {
         var hash = crypto.createHash('md5')
             .update(+new Date + '')
             .digest('hex')
@@ -147,21 +151,28 @@ command.prototype.initialize = function(plugin, callback) {
     var cmd = this;
     var model = new models.Project({id:opts.project});
     Step(function() {
+        if (!cmd.opts.quiet) process.stderr.write('Loading project...');
         Bones.utils.fetch({model:model}, this);
     }, function(err) {
-        if (err) throw err;
+        if (err) return cmd.error(err, function() {
+            process.stderr.write(err.stack + '\n');
+            process.exit(1);
+        });
+        if (!cmd.opts.quiet) process.stderr.write(' done.\n');
         // Set the postgres connection pool size to # of cpus based on
         // assumption of pool size in tilelive-mapnik.
         model.get('Layer').each(function(l) {
             if (l.attributes.Datasource && l.attributes.Datasource.dbname)
                 l.attributes.Datasource.max_size = require('os').cpus().length;
         });
+        if (!cmd.opts.quiet) process.stderr.write('Localizing project...');
         model.localize(model.toJSON(), this);
     }, function(err) {
         if (err) return cmd.error(err, function() {
             process.exit(1);
         });
 
+        if (!cmd.opts.quiet) process.stderr.write(' done.\n');
         model.mml = _(model.mml).extend({
             name: model.mml.name || model.id,
             version: model.mml.version || '1.0.0',
@@ -222,9 +233,6 @@ command.prototype.put = function(data, callback) {
     // Allow commands to filter.
     if (this.putFilter) data = this.putFilter(data);
 
-    // Output data to stderr/stdout.
-    this.toConsole(data);
-
     if (!this.opts.url) return callback();
     request.put({
         uri: this.opts.url,
@@ -236,21 +244,41 @@ command.prototype.put = function(data, callback) {
     }, callback);
 };
 
-command.prototype.toConsole = function(data) {
-    if (data.status == 'error') {
-        console.error('%s', data.error);
-    } else if (data.updated) {
-        if (data.remaining === Infinity) return;
-        console.log('[%s] %s% - %s - %s remaining',
-            (new Date(data.updated)).format('Y M D g:ia'),
-            ((data.progress || 0) * 100).toFixed(4),
-            (data.rate || 0).toFixed(2) + ' tiles/sec',
-            ((data.remaining || 0) > 36e5)
-                ? ((data.remaining || 0) / 36e5).toFixed(1) + 'h'
-                : ((data.remaining || 0) / 6e4).toFixed(1) + 'm'
-        );
+
+function formatDuration(duration) {
+    duration = duration / 1000 | 0;
+    var seconds = duration % 60;
+    duration -= seconds;
+    var minutes = (duration % 3600) / 60;
+    duration -= minutes * 60;
+    var hours = (duration % 86400) / 3600;
+    duration -= hours * 3600;
+    var days = duration / 86400;
+
+    return (days > 0 ? days + 'd ' : '') + 
+           (hours > 0 || days > 0 ? hours + 'h ' : '') + 
+           (minutes > 0 || hours > 0 || days > 0 ? minutes + 'm ' : '') +
+           seconds + 's';
+}
+
+function formatNumber(number, decimals) {
+    var num = parseFloat(number).toFixed(decimals || 0).split('.');
+    for (var i = num[0].length - 3; i > 0; i -= 3) {
+        num[0] = num[0].substring(0, i) + ',' + num[0].substring(i);
     }
-};
+    return num.join('.');
+}
+
+
+function formatString(string) {
+    var args = arguments;
+    var pos = 1;
+    return string.replace(/%(.)/g, function(_, chr) {
+        if (chr === 's') return args[pos++];
+        if (chr === 'd') return Number(args[pos++]);
+        return chr;
+    });
+}
 
 command.prototype.png =
 command.prototype.svg =
@@ -280,98 +308,116 @@ command.prototype.mbtiles = function (project, callback) {
     require(this.opts.format).registerProtocols(tilelive);
     require('tilelive-mapnik').registerProtocols(tilelive);
 
-    var uri = {
-        protocol: 'mapnik:',
-        slashes: true,
-        xml: project.xml,
-        mml: project.mml,
-        pathname: path.join(this.opts.files, 'project', project.id, project.id + '.xml'),
-        query: { bufferSize: this.opts.bufferSize, metatile:this.opts.metatile }
-    };
-    var source;
-    var sink;
+    var opts = this.opts;
 
-    Step(function() {
-        tilelive.load(uri, this);
-    }, function(err, s) {
-        if (err) throw err;
-        source = s;
-        tilelive.load({
-            protocol:cmd.opts.format+':',pathname:cmd.opts.filepath,
-            query: { batch:100 }
-        }, this);
-    }, function(err, s) {
-        if (err) throw err;
-        sink = s;
-        sink.startWriting(this);
-    }, function(err) {
-        if (err) throw err;
-        sink.putInfo(project.mml, this);
-    }, function(err) {
-        if (err) return cmd.error(err, function() {
-            process.exit(1);
-        });
+    // Try to load a job file if one was given and it exists.
+    if (opts.job) {
+        opts.job = path.resolve(opts.job);
+        try {
+            var job = fs.readFileSync(opts.job, 'utf8');
+        } catch(err) {
+            if (err.code !== 'EBADF') throw err;
+        }
+    } else {
+        // Generate a job file based on the output filename.
+        var slug = path.basename(opts.filepath, path.extname(opts.filepath));
+        opts.job = path.join(path.dirname(opts.filepath), slug + '.export');
+    }
 
-        var copy = tilelive.copy({
-            source: source,
-            sink: sink,
+    if (job) {
+        job = JSON.parse(job);
+        if (!cmd.opts.quiet) console.warn('Continuing job ' + opts.job);
+        var scheme = tilelive.Scheme.unserialize(job.scheme);
+        var task = new tilelive.CopyTask(job.from, job.to, scheme, opts.job);
+    } else {
+        if (!cmd.opts.quiet) console.warn('Creating new job ' + opts.job);
+
+        var from = {
+            protocol: 'mapnik:',
+            slashes: true,
+            xml: project.xml,
+            mml: project.mml,
+            pathname: path.join(opts.files, 'project', project.id, project.id + '.xml'),
+            query: { bufferSize: opts.bufferSize, metatile: opts.metatile }
+        };
+
+        var to = {
+            protocol: opts.format + ':',
+            pathname: opts.filepath,
+            query: { batch: 100 }
+        };
+
+        var scheme = tilelive.Scheme.create(opts.scheme, {
             bbox: project.mml.bounds,
-            minZoom: project.mml.minzoom,
-            maxZoom: project.mml.maxzoom,
+            minzoom: project.mml.minzoom,
+            maxzoom: project.mml.maxzoom,
+            metatile: opts.metatile,
             concurrency: Math.floor(
-                Math.pow(cmd.opts.metatile,2) * // # of tiles in each metatile
-                require('os').cpus().length *   // expect one metatile to occupy each core
-                4/cmd.opts.concurrency          // overcommit x4 throttle by export concurrency
-            ),
-            tiles: true,
-            grids: !!project.mml.interactivity,
-            skipBlank: cmd.opts.skipblank,
-            resume: cmd.opts.resume
+                Math.pow(cmd.opts.metatile, 2) *    // # of tiles in each metatile
+                require('os').cpus().length *       // expect one metatile to occupy each core
+                4 / cmd.opts.concurrency            // overcommit x4 throttle by export concurrency
+            )
+        });
+        var task = new tilelive.CopyTask(from, to, scheme, opts.job);
+    }
+
+
+    var errorfile = path.join(path.dirname(opts.job), path.basename(opts.job) + '-failed');
+    if (!cmd.opts.quiet) console.warn('Writing errors to ' + errorfile);
+
+    fs.open(errorfile, 'a', function(err, fd) {
+        if (err) throw err;
+
+        task.on('error', function(err, tile) {
+            console.warn('\r\033[K' + tile.toString() + ': ' + err.message);
+            fs.write(fd, JSON.stringify(tile) + '\n');
+            report(task.stats.snapshot());
         });
 
-        var copied = 0;
-        var timeout = setInterval(function progress() {
-            var progress = (copy.copied + copy.failed) / copy.total;
-            cmd.put({
-                status: progress < 1 ? 'processing' : 'complete',
-                progress: progress,
-                remaining: cmd.remaining(progress, copy.started),
-                updated: +new Date(),
-                rate: (copy.copied - copied) / 5
+        task.on('progress', report);
+
+        task.on('finished', function() {
+            if (!cmd.opts.quiet) console.warn('\nfinished');
+        });
+
+        task.start(function(err) {
+            if (err) throw err;
+            task.sink.putInfo(project.mml, function(err) {
+                if (err) throw err;
             });
-            copied = copy.copied;
-        }, 5000);
-
-        copy.on('warning', function(err) {
-            console.log(err);
-        });
-        copy.on('finished', function() {
-            clearInterval(timeout);
-
-            if (source._stats) {
-                console.log('source => sink');
-                console.log('--------------');
-                console.log('time          %s', Date.now() - copy.started);
-                console.log('copied        %s', copy.total);
-                console.log('blank         %s', copy.blank);
-                console.log('skipped       %s', copy.skipped);
-                console.log('');
-                console.log('source');
-                console.log('------');
-                console.log('map.render    %s', source._stats.render);
-                console.log('getImage      %s', source._stats.total);
-                console.log('encoded       %s', source._stats.encoded);
-                console.log('solid         %s', source._stats.solid);
-                console.log('solid+painted %s', source._stats.solidPainted);
-            }
-
-            callback();
-        });
-        copy.on('error', function(err) {
-            clearInterval(timeout);
-            callback(err);
         });
     });
+
+    function report(stats) {
+        var progress = stats.processed / stats.total;
+        var remaining = cmd.remaining(progress, task.started);
+        cmd.put({
+            status: progress < 1 ? 'processing' : 'complete',
+            progress: progress,
+            remaining: remaining,
+            updated: +new Date(),
+            rate: stats.speed
+        });
+
+        if (!cmd.opts.quiet) {
+            util.print(formatString('\r\033[K[%s] %s%% (%s/%s) | %s/s | %s left | uniq: %s (%s%%) | dupe: %s (%s%%) | skip: %s (%s%%) | fail: %s (%s%%)',
+                formatDuration(stats.date - task.started),
+                ((progress || 0) * 100).toFixed(4),
+                formatNumber(stats.processed),
+                formatNumber(stats.total),
+                formatNumber(stats.speed),
+                formatDuration(remaining),
+                formatNumber(stats.unique),
+                (((stats.unique / stats.processed) || 0) * 100).toFixed(2),
+                formatNumber(stats.duplicate),
+                (((stats.duplicate / stats.processed) || 0) * 100).toFixed(2),
+                formatNumber(stats.skipped),
+                (((stats.skipped / stats.processed) || 0) * 100).toFixed(2),
+                formatNumber(stats.failed),
+                (((stats.failed / stats.processed) || 0) * 100).toFixed(2)
+            ));
+        }
+    }
 };
 
 command.prototype.upload = function (callback) {
